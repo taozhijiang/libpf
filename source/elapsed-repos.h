@@ -29,7 +29,7 @@ struct metric_info {
     int32_t p999_;
 
     int32_t cnt_;
-    int32_t tps_;
+    int32_t tps_;   // 一律换算成transaction-per-second
     int64_t sum_;
 
     metric_info(time_t start_tm, time_t duration):
@@ -64,7 +64,7 @@ public:
     void terminate();
 
     void submit(const std::string& metric, int32_t val);
-    bool message(std::string& msg);
+    bool message(std::string* msg_out);
 
 private:
     bool try_switch() {
@@ -75,16 +75,16 @@ private:
     bool try_switch(std::lock_guard<std::mutex>& lock);
 
 private:
-    ElapsedRepos() = default; // 默认构造
+    ElapsedRepos() = default;   // 默认构造
 
     bool initialized_ = false;
-    bool terminate_ = false;
+    bool terminate_ = false;    // 退出辅助线程
 
-    time_t start_clock_ms_; // 本轮采样开始的时间，使用ms精度记录
-    time_t duration_ms_; // 需要保留采样的时长
+    time_t start_clock_ms_;     // 本轮开始的采样时间，使用ms精度记录，所有metric共享
+    time_t duration_ms_;        // 需要保留采样的时长
 
     std::mutex mutex_;
-    metric_runtimes* run_ptr_; // 实时数据存储
+    metric_runtimes* run_ptr_;  // 实时数据存储
 
     // 辅助线程，主要驱动时间，已经对已经完成采样的数据进行计算处理
     std::thread helper_;
@@ -94,7 +94,7 @@ private:
     std::mutex mutex_queue_;
     std::vector<metric_runtimes *> process_queue_;
 
-    // 队列的异步通知fd，由select监听事件
+    // 队列的异步通知fd，由select监听ready事件
     int notify_send_fd_;
     int notify_recv_fd_;
 

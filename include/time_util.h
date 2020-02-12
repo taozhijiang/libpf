@@ -28,6 +28,7 @@ public:
         return now_us() - start;
     }
 
+    // unix timestamp的友好字符串显示
     static std::string unixtime_str(time_t timep) {
         struct tm tm{};
         ::localtime_r(&timep, &tm);

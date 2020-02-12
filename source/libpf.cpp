@@ -22,8 +22,8 @@ void submit(const std::string& metric, int32_t val) {
     ElapsedRepos::instance().submit(metric, val);
 }
 
-bool message(std::string& msg) {
-    return ElapsedRepos::instance().message(msg);
+bool message(std::string* msg_out) {
+    return ElapsedRepos::instance().message(msg_out);
 }
 
 } // end namespace libpf

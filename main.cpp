@@ -11,17 +11,19 @@
 volatile bool terminate = false;
 
 static void signal_handler(int signal) {
+
     switch(signal) {
+
         case SIGUSR1: {
             std::string msg {};
-            if(libpf::message(msg))
+            if(libpf::message(&msg))
                 std::cout << msg << std::endl;
         }
             break;
 
         case SIGINT: {
             std::string msg {};
-            if(libpf::message(msg))
+            if(libpf::message(&msg))
                 std::cout << msg << std::endl;
 
             // terminate system
@@ -40,7 +42,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "[INFO] begin libpf demo test." << std::endl;
 
-    if(!libpf::init(20, 2)) {
+    if(!libpf::init(30, 2)) {
         std::cout << "[ERROR] init libpf failed." << std::endl;
         return EXIT_FAILURE;
     }
@@ -50,7 +52,7 @@ int main(int argc, char* argv[]) {
 
     struct timespec delay {};
     delay.tv_sec = 0;
-    delay.tv_nsec = 1; // avoid CPU 100%
+    delay.tv_nsec = 1; // 防止CPU使用率100%
 
     while(true) {
 

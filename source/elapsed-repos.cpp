@@ -65,7 +65,7 @@ bool ElapsedRepos::try_switch(std::lock_guard<std::mutex> &lock) {
         run_ptr_ = nullptr;
 
         do {
-            run_ptr_ = new metric_runtimes();
+            run_ptr_ = new (std::nothrow) metric_runtimes();
             start_clock_ms_ = TimeUtil::now_ms();
             if(!run_ptr_) {
                 std::cout << "[ERROR] create metric_runtimes failed." << std::endl;
@@ -107,13 +107,18 @@ void ElapsedRepos::terminate() {
 
 void ElapsedRepos::submit(const std::string &metric, int32_t val) {
 
+    if(!initialized_) {
+        std::cout << "[ERROR] libpf is not initialized successfully!" << std::endl;
+        return;
+    }
+
     if(metric.empty()) return;
 
     std::lock_guard<std::mutex> lock(mutex_);
 
     if(!run_ptr_) {
         start_clock_ms_ = TimeUtil::now_ms();
-        run_ptr_ = new metric_runtimes();
+        run_ptr_ = new (std::nothrow) metric_runtimes();
         if(!run_ptr_) {
             std::cout << "[ERROR] create metric_runtimes failed." << std::endl;
             return;
@@ -135,12 +140,19 @@ void ElapsedRepos::submit(const std::string &metric, int32_t val) {
     try_switch(lock);
 }
 
-bool ElapsedRepos::message(std::string &msg) {
+bool ElapsedRepos::message(std::string* msg_out) {
 
     std::lock_guard<std::mutex> lock_persist(mutex_persist_);
 
     if(persistence_.empty()) {
-        msg = "\nEMPTY.\n";
+
+        if(msg_out) {
+            *msg_out = "\nEMPTY.\n";
+        }
+        else {
+            std::cout << "\nEMPTY.\n" << std::endl;
+        }
+
         return true;
     }
 
@@ -170,7 +182,13 @@ bool ElapsedRepos::message(std::string &msg) {
     }
 
     ss << "===== END RUNTIME STATISTIC:       =====" << std::endl;
-    msg = ss.str();
+
+    if(msg_out) {
+        *msg_out = ss.str();
+    } else {
+        std::cout << ss.str() << std::endl;
+    }
+
     return true;
 }
 
@@ -223,7 +241,7 @@ void ElapsedRepos::run() {
             }
 
             // 保存计算汇总后的结果
-            metric_infos* infos = new metric_infos();
+            metric_infos* infos = new(std::nothrow) metric_infos();
             if(!infos) {
                 std::cout << "[ERROR] create metric_infos failed." << std::endl;
                 delete task_ptr;
@@ -236,7 +254,7 @@ void ElapsedRepos::run() {
                 auto& run = iter->second;
                 metric_info info(run.start_tm_, run.duration_);
 
-                // calc
+                // calc汇总统计
                 info.cnt_ = run.detail_.size();
                 info.sum_ = std::accumulate(run.detail_.begin(), run.detail_.end(), 0);
                 info.avg_ = info.sum_ / info.cnt_;
@@ -269,7 +287,7 @@ void ElapsedRepos::run() {
                 std::lock_guard<std::mutex> lock_persist(mutex_persist_);
                 persistence_.push_back(infos);
 
-                // 回环，删除旧的记录
+                // 回环，删除旧的不需要的历史记录
                 while(persistence_.size() > sample_) {
                     metric_infos* front_item = persistence_.front();
                     delete front_item;
